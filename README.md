@@ -43,6 +43,9 @@ python TallyBridge.py
 Each complete packet received is logged (raw hex + decoded summary) and forwarded
 to the configured UDP destination.
 
+To run it persistently on a Linux host (systemd service, firewall, logs), see
+[DEPLOY.md](DEPLOY.md).
+
 ### Listener (diagnostic)
 
 ```bash
