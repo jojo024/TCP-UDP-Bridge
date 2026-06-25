@@ -19,7 +19,20 @@ service.
 > interfaces or the bind will fail with *"Cannot assign requested address"*.
 > Set it to `0.0.0.0` to listen on all interfaces.
 
-## Install as a systemd service (recommended)
+## One-command install (recommended)
+
+From the cloned repo directory:
+
+```bash
+sudo ./deploy.sh
+```
+
+This installs the code to `/opt/tcp-udp-bridge`, creates the `tallybridge`
+service account, installs the systemd unit, and enables + starts the service.
+Re-run it any time to push code changes and restart. The manual steps below are
+equivalent if you prefer to do it by hand.
+
+## Install as a systemd service (manual)
 
 ```bash
 # 1. Place the code in a stable location
