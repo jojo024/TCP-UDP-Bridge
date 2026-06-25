@@ -7,7 +7,9 @@ Wants=network-online.target
 Type=simple
 # Adjust the path if you cloned the repo elsewhere
 WorkingDirectory=/opt/tcp-udp-bridge
-ExecStart=/usr/bin/python3 /opt/tcp-udp-bridge/TallyBridge.py
+ExecStart=/usr/bin/python3 -u /opt/tcp-udp-bridge/TallyBridge.py
+# Unbuffered output so logs reach the journal immediately
+Environment=PYTHONUNBUFFERED=1
 Restart=always
 RestartSec=3
 # Wait for the bound interface IP to be available before failing hard
