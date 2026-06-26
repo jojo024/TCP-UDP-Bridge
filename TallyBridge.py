@@ -1,5 +1,6 @@
 import socket
 import threading
+from datetime import datetime
 
 # ---- Configuration ----
 TCP_BIND_IP   = '192.168.240.12'
@@ -14,11 +15,30 @@ TSL_STX = 0x02
 
 _udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+# Serialises log output across client threads so multi-line records stay intact
+_log_lock = threading.Lock()
+
+
+def log(msg: str = "", *, detail: bool = False) -> None:
+    """Print a timestamped log line.
+
+    detail=True indents the line and omits the timestamp, so it reads as
+    continuation detail beneath the preceding timestamped event.
+    """
+    with _log_lock:
+        if detail:
+            print(f"    {msg}")
+        elif msg:
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            print(f"[{ts}] {msg}")
+        else:
+            print()
+
 
 def parse_tsl_v5(payload: bytes) -> None:
     """Print a decoded summary of a TSL v5 payload (FE 02 already stripped)."""
     if len(payload) < 12:
-        print(f"  [WARN] Payload too short to parse ({len(payload)} bytes)")
+        log(f"[WARN] Payload too short to parse ({len(payload)} bytes)")
         return
 
     version       = payload[2]
@@ -36,8 +56,9 @@ def parse_tsl_v5(payload: bytes) -> None:
     if text_length > 0 and len(payload) >= 12 + text_length:
         label = payload[12:12 + text_length].decode('ascii', errors='ignore')
 
-    print(f"  v{version} | Screen={screen_index} Display={display_index} | "
-          f"RH={tally_labels[rh]} Text={tally_labels[txt]} LH={tally_labels[lh]} | \"{label}\"")
+    log(f"v{version} | Screen={screen_index} Display={display_index} | "
+        f"RH={tally_labels[rh]} Text={tally_labels[txt]} LH={tally_labels[lh]} | \"{label}\"",
+        detail=True)
 
 
 def extract_packets(buf: bytes):
@@ -54,7 +75,7 @@ def extract_packets(buf: bytes):
             buf = b''
             break
         if idx > 0:
-            print(f"  [WARN] Skipping {idx} unrecognised bytes before packet marker")
+            log(f"[WARN] Skipping {idx} unrecognised bytes before packet marker")
             buf = buf[idx:]
         if len(buf) < 4:
             break  # need FE 02 + 2 PBC bytes before we know total length
@@ -69,7 +90,7 @@ def extract_packets(buf: bytes):
 
 
 def handle_client(conn: socket.socket, addr: tuple) -> None:
-    print(f"[CONNECT]    {addr[0]}:{addr[1]}")
+    log(f"[CONNECT]    {addr[0]}:{addr[1]}")
     buf = b''
     try:
         while True:
@@ -79,15 +100,15 @@ def handle_client(conn: socket.socket, addr: tuple) -> None:
             buf += chunk
             packets, buf = extract_packets(buf)
             for payload in packets:
-                print(f"\n[FORWARD] {len(payload)}B  {addr[0]} → UDP {CEREBRUM_IP}:{CEREBRUM_PORT}")
-                print(f"  RAW : {payload.hex(' ').upper()}")
+                log(f"[FORWARD] {len(payload)}B  {addr[0]} → UDP {CEREBRUM_IP}:{CEREBRUM_PORT}")
+                log(f"RAW : {payload.hex(' ').upper()}", detail=True)
                 parse_tsl_v5(payload)
                 _udp_sock.sendto(payload, (CEREBRUM_IP, CEREBRUM_PORT))
     except OSError as e:
-        print(f"[ERROR] {addr}: {e}")
+        log(f"[ERROR] {addr}: {e}")
     finally:
         conn.close()
-        print(f"[DISCONNECT] {addr[0]}:{addr[1]}")
+        log(f"[DISCONNECT] {addr[0]}:{addr[1]}")
 
 
 def start_bridge() -> None:
@@ -101,7 +122,7 @@ def start_bridge() -> None:
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((TCP_BIND_IP, TCP_BIND_PORT))
     server.listen(5)
-    print("Waiting for connections... (Ctrl+C to stop)\n")
+    log("Waiting for connections... (Ctrl+C to stop)")
 
     try:
         while True:
@@ -109,7 +130,7 @@ def start_bridge() -> None:
             t = threading.Thread(target=handle_client, args=(conn, addr), daemon=True)
             t.start()
     except KeyboardInterrupt:
-        print("\n[STOP] Bridge shutting down.")
+        log("[STOP] Bridge shutting down.")
     finally:
         server.close()
         _udp_sock.close()
