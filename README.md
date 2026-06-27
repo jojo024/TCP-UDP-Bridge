@@ -14,8 +14,9 @@ payload.
 
 | File | Purpose |
 |------|---------|
-| `TallyBridge.py`   | TCP → UDP bridge. Listens for TSL v5 TCP, decodes, and forwards as UDP. |
-| `TallyListener.py` | Standalone diagnostic listener. Accepts a single TSL v5 TCP connection and pretty-prints each packet. |
+| `TallyBridge.py`     | TCP → UDP bridge. Listens for TSL v5 TCP, decodes, and forwards as UDP. |
+| `TallyListener.py`   | Standalone diagnostic listener. Accepts a single TSL v5 TCP connection and pretty-prints each packet. |
+| `TallyUDPTester.py`  | TSL v5 UDP tester. Sends crafted tally packets to Cerebrum (or any TSL v5 UDP receiver), or listens and decodes incoming UDP. |
 
 ## Requirements
 
@@ -54,6 +55,26 @@ python TallyListener.py
 
 You will be prompted for an IP/port to bind to. Useful for confirming a source
 device is emitting valid TSL v5 TCP before putting the bridge in line.
+
+### UDP tester (verify the path to Cerebrum)
+
+Send tally packets straight to Cerebrum over UDP — no TCP source needed:
+
+```bash
+# One packet: display index 1, left-hand tally RED, text "TEST"
+python3 TallyUDPTester.py --ip 192.168.240.11 --port 9000 --index 1 --lh red --text TEST
+
+# Cycle through tally states every 2s so you can watch Cerebrum react
+python3 TallyUDPTester.py --ip 192.168.240.11 --index 1 --cycle --interval 2
+
+# Listen mode: bind locally and decode any TSL v5 UDP that arrives
+python3 TallyUDPTester.py --listen --port 9000
+```
+
+Tally states accept `off` / `red` / `green` / `amber` (or `0`-`3`) for the
+`--rh`, `--text-tally`, and `--lh` lamps. Run `python3 TallyUDPTester.py -h`
+for all options. The packets it emits are byte-identical to what the bridge
+forwards, so a successful test confirms Cerebrum and the network path are good.
 
 ## How it works
 
