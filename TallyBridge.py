@@ -80,10 +80,12 @@ def extract_packets(buf: bytes):
         if len(buf) < 4:
             break  # need FE 02 + 2 PBC bytes before we know total length
         pbc = int.from_bytes(buf[2:4], byteorder='little')
-        total = 2 + pbc  # FE(1) + STX(1) + PBC-counted body
+        # PBC counts the bytes that follow the 2-byte PBC field, so a full
+        # framed packet is FE(1) + STX(1) + PBC(2) + pbc body bytes.
+        total = 4 + pbc
         if len(buf) < total:
             break  # incomplete packet — wait for more data
-        payload = buf[2:total]  # everything after FE 02 (UDP-ready)
+        payload = buf[2:total]  # PBC field + body = UDP-ready payload (FE 02 stripped)
         packets.append(payload)
         buf = buf[total:]
     return packets, buf

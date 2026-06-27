@@ -2,6 +2,8 @@
 Description=TSL v5 TCP-to-UDP Bridge
 After=network-online.target
 Wants=network-online.target
+# Never give up restarting (e.g. while waiting for the bound IP to come up)
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -12,8 +14,6 @@ ExecStart=/usr/bin/python3 -u /opt/tcp-udp-bridge/TallyBridge.py
 Environment=PYTHONUNBUFFERED=1
 Restart=always
 RestartSec=3
-# Wait for the bound interface IP to be available before failing hard
-StartLimitIntervalSec=0
 # Run as an unprivileged user (create with: sudo useradd -r -s /usr/sbin/nologin tallybridge)
 User=tallybridge
 StandardOutput=journal
